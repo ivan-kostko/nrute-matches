@@ -1032,6 +1032,22 @@ func TestMatchMovementsToBundleContractConditions(t *testing.T) {
 						},
 					},
 				},
+				// Should be skipped because not a bundle
+				domain.ContractCondition{
+					Id:                   "CC-4",
+					Name:                 "Turnaround",
+					WorkflowType:         "turnaround",
+					WorkflowFactor:       "",
+					VehicleType:          "",
+					BranchIdentifier:     "6",
+					ContractorIdentifier: "987654",
+					MovementActivities: []domain.MovementActivity{
+						{
+							Option: "",
+							Type:   "",
+						},
+					},
+				},
 			},
 			ExpectedMatches: []application.Match{
 				application.Match{

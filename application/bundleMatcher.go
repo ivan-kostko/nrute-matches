@@ -9,7 +9,7 @@ import (
 
 func MatchMovementsToBundleContractConditions(ctx context.Context, movements []Movement, conds []domain.ContractCondition) []Match {
 
-	mainLogger := new(log) //.WithFields(map[string]interface{}{"logger": "MatchMovementsToBundleContractConditions"})
+	mainLogger := new(log).WithFields(map[string]interface{}{"logger": "MatchMovementsToBundleContractConditions"})
 	mainLogger.Info("MatchMovementsToBundleContractConditions invoked")
 
 	mainLogger.Debug("Getting all combinations")
@@ -83,7 +83,10 @@ func selectBestMatchCombination(logger Log, combinations [][]Match) []Match {
 		return nil
 	}
 
+	// There should be one-and-only-one combination, cause casewith 0 combinations was excluded in the beginning of the func
+
 	logger.WithFields(map[string]interface{}{"winners_best_score": winners.BestScore}).Info("The winner successfully selected")
+	logger.Debug("The winner is: ", winners.Combinations[0])
 	return winners.Combinations[0]
 
 }
@@ -109,6 +112,12 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 
 		condLogger := logger.WithFields(map[string]interface{}{"contract_condition_id": cond.Id, "contract_condition_name": cond.Name})
 
+		// Skipping non bundles
+		if !(len(cond.MovementActivities) > 1) {
+			condLogger.Info("ContractCondition is skipped because number of movement activities (" + strconv.Itoa(len(cond.MovementActivities)) + ") is less than 2, so it is not a Bundle at all.")
+			continue
+		}
+
 		// Represents set of movements which have not been matched yet.
 		// Due to rearrangements of `unmatchedMovementLeftovers` it is better to copy original `movements`.
 		unmatchedMovementLeftovers := append([]Movement{}, movements...)
@@ -123,9 +132,7 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 		condLogger.Info("Starting to find matches for contract condition")
 
 		// The flag indicates whether current contract condition has movement activity w/o corresponding movement.
-		// It is used to determin if contract condition match is invalid and/or to exit MA and MVMT loops.
-		// Initial value does not change anything while it is reassigned in the beginning of conditions loop.
-		ccHasUnmatchedMA := true
+		ccHasUnmatchedMA := false
 
 		condLogger.Debug("Movements to exercise: ", unmatchedMovementLeftovers)
 
@@ -143,8 +150,8 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 			ccmaLogger := condLogger.WithFields(map[string]interface{}{"movement_activity_type": ccma.Type, "movement_activity_option": ccma.Option})
 			ccmaLogger.Debug("Starting to match movement to current activity")
 
-			// Lets be objective - yet it is not clear whether condition will have matches or not.
-			ccHasUnmatchedMA = true
+			// Lets be objective - it is not matched yet.
+			maHasMatched := false
 
 			// Loop over `movements` in order to find matches
 			for mvmtNo, mvmt := range unmatchedMovementLeftovers {
@@ -183,8 +190,6 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 					mvmtLogger.Debug("Movement does not match by main properties")
 					continue
 				}
-
-				// Supposed to match with some score
 
 				// Check for VehicleType match
 				switch {
@@ -228,25 +233,26 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 					continue
 				}
 
-				mvmtLogger.Info("Movement matched to contract condition movement activity. Appending it to thecurrent match and removing it from unmatched.")
+				mvmtLogger.Info("Movement matched to contract condition movement activity. Appending it to current match and removing it from unmatched.")
 
 				// Remove current move from unmatched
 				unmatchedMovementLeftovers = append(unmatchedMovementLeftovers[:mvmtNo], unmatchedMovementLeftovers[mvmtNo+1:]...)
 
 				mvmtLogger.Debug("Unmatched leftovers: ", unmatchedMovementLeftovers)
 
-				// Append current match COPY to movements
+				// Append current match to movements
 				currentCcMatch.Movements = append(currentCcMatch.Movements, mvmt)
 
-				// Indicate that exiting this loop due to match and not other way around.
-				ccHasUnmatchedMA = false
+				// Indicate that MA has matched.
+				maHasMatched = true
 
 				break
 			}
 
-			if ccHasUnmatchedMA {
+			if !maHasMatched {
 				// Means no movement matches MA - deal with it!
 				ccmaLogger.Info("Noone movement matches movement activity")
+				ccHasUnmatchedMA = true
 				break
 			}
 
@@ -256,6 +262,8 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 			condLogger.Info("Skipping contract condition while there are unmatched movement activities")
 			continue
 		}
+
+		condLogger.Debug("Current ContractCondition match: ", currentCcMatch)
 
 		// All previously checked contract conditions will appear in resultMatchCombinations if matched.
 		// So, only further/leftover conditions should be checked for matching to unmatched movements
@@ -273,19 +281,19 @@ func getMatchingCombinations(logger Log, movements []Movement, conds []domain.Co
 		condLogger.Debug("Leftover combinations are as the following: ", leftoverCombinations)
 
 		if len(leftoverCombinations) > 0 {
-			condLogger.Debug("Tere are matched leftovers. Adding them with current match to result")
+			condLogger.Debug("There are matched leftovers. Adding them with current match to result")
 			for _, leftoverCombination := range leftoverCombinations {
 				// Appending resultMatchCombinations with leftoverCombination in conjunction with current match
 				resultMatchCombinations = append(resultMatchCombinations, append(leftoverCombination, currentCcMatch))
 			}
 
 			// Due to fact that any match is better than unmatched movements, ther is no reason to add current match in conjunction to unmatched movements.
-			// Also, it could bring problems in case of same score with some match to all fallbacks. So, just moving to next CC.
+			// Also, it could bring problems in case of same score with some match and zero score. So, just moving to next CC.
 
 			continue
 		}
 
-		condLogger.Debug("Tere are no matched leftovers.")
+		condLogger.Debug("There are no matched leftovers.")
 
 		// While there were no matched leftovers, for consistency it should return current match with unmatched movements.
 		currentCombination := []Match{currentCcMatch}

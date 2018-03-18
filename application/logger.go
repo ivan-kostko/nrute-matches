@@ -1,3 +1,8 @@
+/*
+	This file contains log adapter in order to make debugging a bit easier.
+	Feel free to replace it with something better.
+*/
+
 package application
 
 import (
@@ -104,7 +109,7 @@ func (combiSet goStringableCombinationSet) GoString() string {
 	result := "\r\nCombination Set:\r\n"
 
 	for mNo, m := range combiSet {
-		result += fmt.Sprintf("%d : %#v\r\n", mNo, m)
+		result += fmt.Sprintf("%d : %#v\r\n", mNo, goStringableCombination(m))
 	}
 
 	return result
