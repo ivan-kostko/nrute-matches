@@ -398,6 +398,87 @@ func TestMatchMovementsToBundleContractConditions(t *testing.T) {
 		*/
 
 		{
+			Alias: `No contract condition`,
+			MovementsIn: []application.Movement{
+				// wrong Contractor id
+				application.Movement{
+					Id:       "132450",
+					Type:     "checkin",
+					Option:   "",
+					Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+					Branch:   application.Branch{Id: "6"},
+					Workflow: application.Workflow{Id: "1231465", Type: "turnaround", Factor: "standard"},
+					User:     application.User{Contractor: func() *string { s := "wrong_987654"; return &s }(), Id: "TheUserId"},
+					Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+				},
+				// wrong branch
+				application.Movement{
+					Id:       "132451",
+					Type:     "checkin",
+					Option:   "",
+					Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+					Branch:   application.Branch{Id: "wrong_6"},
+					Workflow: application.Workflow{Id: "12314654", Type: "turnaround", Factor: "standard"},
+					User:     application.User{Contractor: func() *string { s := "987654"; return &s }(), Id: "TheUserId"},
+					Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+				},
+				// wrong Workflow type
+				application.Movement{
+					Id:       "132452",
+					Type:     "checkin",
+					Option:   "",
+					Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+					Branch:   application.Branch{Id: "6"},
+					Workflow: application.Workflow{Id: "12314655", Type: "wrong_turnaround", Factor: "standard"},
+					User:     application.User{Contractor: func() *string { s := "987654"; return &s }(), Id: "TheUserId"},
+					Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+				},
+			},
+			ConditionsIn: nil,
+			ExpectedMatches: []application.Match{
+
+				application.Match{
+					Movements: []application.Movement{
+						// wrong Contractor id
+						application.Movement{
+							Id:       "132450",
+							Type:     "checkin",
+							Option:   "",
+							Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+							Branch:   application.Branch{Id: "6"},
+							Workflow: application.Workflow{Id: "1231465", Type: "turnaround", Factor: "standard"},
+							User:     application.User{Contractor: func() *string { s := "wrong_987654"; return &s }(), Id: "TheUserId"},
+							Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+						},
+						// wrong branch
+						application.Movement{
+							Id:       "132451",
+							Type:     "checkin",
+							Option:   "",
+							Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+							Branch:   application.Branch{Id: "wrong_6"},
+							Workflow: application.Workflow{Id: "12314654", Type: "turnaround", Factor: "standard"},
+							User:     application.User{Contractor: func() *string { s := "987654"; return &s }(), Id: "TheUserId"},
+							Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+						},
+						// wrong Workflow type
+						application.Movement{
+							Id:       "132452",
+							Type:     "checkin",
+							Option:   "",
+							Date:     time.Date(2018, 01, 31, 16, 59, 59, 999999990, time.UTC),
+							Branch:   application.Branch{Id: "6"},
+							Workflow: application.Workflow{Id: "12314655", Type: "wrong_turnaround", Factor: "standard"},
+							User:     application.User{Contractor: func() *string { s := "987654"; return &s }(), Id: "TheUserId"},
+							Vehicle:  application.Vehicle{Type: "car", Id: "TheVehicleId"},
+						},
+					},
+					ContractCondition: nil,
+					Score:             0,
+				},
+			},
+		},
+		{
 			Alias: `Movements do not match by main properties to 1 CC with 2 MA`,
 			MovementsIn: []application.Movement{
 				// wrong Contractor id
